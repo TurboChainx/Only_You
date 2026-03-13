@@ -1,0 +1,144 @@
+# ===========================================
+# Only You - AI Chat Application
+# Complete .gitignore for monorepo structure
+# ===========================================
+
+# ===== DEPENDENCIES =====
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ===== ENVIRONMENT & SECRETS =====
+.env
+.env.*
+!.env.example
+*.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ===== BACKEND SPECIFIC =====
+backend/uploads/
+backend/logs/
+backend/*.log
+backend/coverage/
+backend/.nyc_output/
+
+# ===== ADMIN PANEL SPECIFIC =====
+admin-panel/dist/
+admin-panel/build/
+admin-panel/.vite/
+admin-panel/coverage/
+admin-panel/.env.local
+
+# ===== MOBILE APP SPECIFIC =====
+mobile/.expo/
+mobile/dist/
+mobile/build/
+mobile/web-build/
+mobile/.expo-shared/
+
+# Android
+mobile/android/.gradle/
+mobile/android/build/
+mobile/android/app/build/
+mobile/android/gradle.properties.backup
+mobile/android/keystore.properties
+mobile/android/app/src/main/assets/index.android.bundle
+mobile/android/app/src/main/assets/index.android.bundle.map
+mobile/android/app/src/main/res/drawable-*/
+mobile/android/app/src/main/res/raw/
+mobile/android/.cxx/
+mobile/android/local.properties
+
+# iOS (if added later)
+mobile/ios/Pods/
+mobile/ios/build/
+mobile/ios/*.xcworkspace
+mobile/ios/*.xcuserdata
+
+# React Native
+mobile/metro.config.js.bak
+mobile/.metro-health-check*
+
+# ===== BUILD ARTIFACTS =====
+*.apk
+*.aab
+*.ipa
+*.dSYM.zip
+*.app.zip
+OnlyYou-release*.apk
+app-release*.apk
+
+# ===== DEVELOPMENT FILES =====
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+*.orig
+
+# ===== LOGS & DEBUGGING =====
+*.log
+logs/
+*.pid
+*.seed
+*.pid.lock
+.npm
+.eslintcache
+
+# ===== COVERAGE & TESTING =====
+coverage/
+.coverage/
+*.lcov
+.nyc_output/
+junit.xml
+
+# ===== TEMPORARY & CACHE =====
+.tmp/
+.cache/
+.parcel-cache/
+.next/
+.nuxt/
+.vuepress/dist/
+.serverless/
+.fusv.yml
+
+# ===== DEPLOYMENT =====
+.netlify/
+.vercel/
+.now/
+
+# ===== OS GENERATED =====
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ===== DOCUMENTATION BUILD =====
+docs/build/
+site/
+
+# ===== CUSTOM PROJECT FILES =====
+# Keep deployment guides but ignore sensitive configs
+# deploy/.env
+# deploy/nginx.conf.backup
+
+# ===== ALLOW IMPORTANT FILES =====
+!README.md
+!DEPLOYMENT_GUIDE.md
+!HANDOFF_TO_CLIENT.md
+!QUICK_START.md
+!.env.example
+!deploy/nginx.conf
+!deploy/*.sh
