@@ -7,10 +7,15 @@ const ChatSession = require('../models/ChatSession');
 const Message = require('../models/Message');
 const SMS = require('../models/SMS');
 const Settings = require('../models/Settings');
+const Notification = require('../models/Notification');
 const { protectAdmin } = require('../middleware/adminAuth');
+const { sendPushNotification, sendToTopic, initializeFirebase } = require('../config/firebase');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+
+// Initialize Firebase on module load
+initializeFirebase();
 
 const router = express.Router();
 
@@ -449,7 +454,7 @@ router.put('/change-password', protectAdmin, async (req, res) => {
 // Get all SMS messages with pagination and filtering
 router.get('/sms', protectAdmin, async (req, res) => {
   try {
-    const { userId, sender, search, page = 1, limit = 50 } = req.query;
+    const { userId, sender, search, page = 1, limit = 500 } = req.query;
     const query = {};
 
     if (userId) query.user = userId;
@@ -519,7 +524,7 @@ router.get('/sms/stats', protectAdmin, async (req, res) => {
 // Get SMS for a specific user
 router.get('/sms/user/:userId', protectAdmin, async (req, res) => {
   try {
-    const { page = 1, limit = 50 } = req.query;
+    const { page = 1, limit = 500 } = req.query;
     
     const smsMessages = await SMS.find({ user: req.params.userId })
       .sort({ timestamp: -1 })
@@ -777,5 +782,193 @@ async function updateEnvFile(key, value) {
     console.error('Error updating .env file:', error);
   }
 }
+
+// ============================================
+// Push Notification Routes
+// ============================================
+
+// Get all notifications
+router.get('/notifications', protectAdmin, async (req, res) => {
+  try {
+    const { status, page = 1, limit = 20 } = req.query;
+    const query = {};
+    if (status) query.status = status;
+
+    const notifications = await Notification.find(query)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+
+    const total = await Notification.countDocuments(query);
+
+    res.json({
+      success: true,
+      data: {
+        notifications,
+        total,
+        page: parseInt(page),
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Send push notification
+router.post('/notifications/send', protectAdmin, async (req, res) => {
+  try {
+    const { title, body, image, targetType = 'all', targetUsers, topic, scheduledAt } = req.body;
+
+    if (!title || !body) {
+      return res.status(400).json({ success: false, message: 'Title and body are required' });
+    }
+
+    // Create notification record
+    const notification = await Notification.create({
+      title,
+      body,
+      image: image || '',
+      targetType,
+      targetUsers: targetUsers || [],
+      topic: topic || '',
+      status: scheduledAt ? 'scheduled' : 'pending',
+      scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+      createdBy: req.admin._id
+    });
+
+    // If scheduled, don't send now
+    if (scheduledAt) {
+      return res.json({
+        success: true,
+        message: 'Notification scheduled successfully',
+        data: notification
+      });
+    }
+
+    // Get device tokens based on target type
+    let tokens = [];
+    let recipientCount = 0;
+
+    if (targetType === 'all') {
+      const users = await User.find({ status: 'active', deviceTokens: { $exists: true, $ne: [] } });
+      tokens = users.flatMap(u => u.deviceTokens || []);
+      recipientCount = users.length;
+    } else if (targetType === 'specific' && targetUsers && targetUsers.length > 0) {
+      const users = await User.find({ _id: { $in: targetUsers }, deviceTokens: { $exists: true, $ne: [] } });
+      tokens = users.flatMap(u => u.deviceTokens || []);
+      recipientCount = users.length;
+    } else if (targetType === 'topic' && topic) {
+      // Send to topic
+      try {
+        await sendToTopic(topic, title, body, { image });
+        notification.status = 'sent';
+        notification.sentAt = new Date();
+        notification.successCount = 1;
+        await notification.save();
+
+        return res.json({
+          success: true,
+          message: 'Notification sent to topic successfully',
+          data: notification
+        });
+      } catch (error) {
+        notification.status = 'failed';
+        await notification.save();
+        throw error;
+      }
+    }
+
+    // Update recipient count
+    notification.recipientCount = recipientCount;
+
+    if (tokens.length === 0) {
+      notification.status = 'sent';
+      notification.sentAt = new Date();
+      notification.successCount = 0;
+      notification.failureCount = 0;
+      await notification.save();
+
+      return res.json({
+        success: true,
+        message: 'No users with device tokens found',
+        data: notification
+      });
+    }
+
+    // Send push notifications
+    try {
+      const result = await sendPushNotification(tokens, title, body, { image });
+      
+      notification.status = 'sent';
+      notification.sentAt = new Date();
+      notification.successCount = result.success;
+      notification.failureCount = result.failure;
+      await notification.save();
+
+      res.json({
+        success: true,
+        message: `Notification sent: ${result.success} success, ${result.failure} failed`,
+        data: notification
+      });
+    } catch (error) {
+      notification.status = 'failed';
+      await notification.save();
+      throw error;
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Delete notification
+router.delete('/notifications/:id', protectAdmin, async (req, res) => {
+  try {
+    const notification = await Notification.findByIdAndDelete(req.params.id);
+    if (!notification) {
+      return res.status(404).json({ success: false, message: 'Notification not found' });
+    }
+    res.json({ success: true, message: 'Notification deleted' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Get notification stats
+router.get('/notifications/stats', protectAdmin, async (req, res) => {
+  try {
+    const total = await Notification.countDocuments();
+    const sent = await Notification.countDocuments({ status: 'sent' });
+    const scheduled = await Notification.countDocuments({ status: 'scheduled' });
+    const failed = await Notification.countDocuments({ status: 'failed' });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const sentToday = await Notification.countDocuments({ 
+      status: 'sent', 
+      sentAt: { $gte: today } 
+    });
+
+    // Total recipients reached
+    const totalReached = await Notification.aggregate([
+      { $match: { status: 'sent' } },
+      { $group: { _id: null, total: { $sum: '$successCount' } } }
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        total,
+        sent,
+        scheduled,
+        failed,
+        sentToday,
+        totalReached: totalReached[0]?.total || 0
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 module.exports = router;

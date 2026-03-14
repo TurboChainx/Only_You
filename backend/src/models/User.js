@@ -44,7 +44,10 @@ const userSchema = new mongoose.Schema({
   totalMessages: {
     type: Number,
     default: 0
-  }
+  },
+  deviceTokens: [{
+    type: String
+  }]
 }, {
   timestamps: true
 });

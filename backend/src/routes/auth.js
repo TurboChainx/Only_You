@@ -265,4 +265,53 @@ router.get('/sms-count', protect, async (req, res) => {
   }
 });
 
+// ============================================
+// Device Token Management (for Push Notifications)
+// ============================================
+
+// Register device token
+router.post('/device-token', protect, async (req, res) => {
+  try {
+    const { deviceToken } = req.body;
+    
+    if (!deviceToken) {
+      return res.status(400).json({ success: false, message: 'Device token is required' });
+    }
+
+    const user = await User.findById(req.user._id);
+    
+    if (!user.deviceTokens) {
+      user.deviceTokens = [];
+    }
+    
+    if (!user.deviceTokens.includes(deviceToken)) {
+      user.deviceTokens.push(deviceToken);
+      await user.save({ validateBeforeSave: false });
+    }
+
+    res.json({ success: true, message: 'Device token registered' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Remove device token
+router.delete('/device-token', protect, async (req, res) => {
+  try {
+    const { deviceToken } = req.body;
+    
+    if (!deviceToken) {
+      return res.status(400).json({ success: false, message: 'Device token is required' });
+    }
+
+    await User.findByIdAndUpdate(req.user._id, {
+      $pull: { deviceTokens: deviceToken }
+    });
+
+    res.json({ success: true, message: 'Device token removed' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
