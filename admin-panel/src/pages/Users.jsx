@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Search, Ban, Trash2, ChevronLeft, ChevronRight, Shield, ShieldOff } from 'lucide-react';
+import { Search, Ban, Trash2, ChevronLeft, ChevronRight, Shield, ShieldOff, MessageSquare } from 'lucide-react';
 import { adminAPI } from '../services/api';
 import { useTheme } from '../context/ThemeContext';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 
 export default function Users() {
+  const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -52,14 +54,18 @@ export default function Users() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this user and all their data? This cannot be undone.')) return;
+    if (!window.confirm('Are you sure you want to delete this user?')) return;
     try {
       await adminAPI.deleteUser(id);
-      toast.success('User deleted');
+      toast.success('User deleted successfully');
       loadUsers();
     } catch (error) {
-      toast.error('Delete failed');
+      toast.error('Failed to delete user');
     }
+  };
+
+  const handleViewSMS = (user) => {
+    navigate(`/sms?userId=${user._id}&userName=${encodeURIComponent(user.fullName)}`);
   };
 
   const formatDate = (date) => new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -145,9 +151,16 @@ export default function Users() {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <button
+                          onClick={() => handleViewSMS(user)}
+                          className="p-2 rounded-lg text-blue-500 hover:bg-blue-50 transition-colors"
+                          title="View SMS messages"
+                        >
+                          <MessageSquare className="w-4 h-4" />
+                        </button>
+                        <button
                           onClick={() => handleBan(user._id)}
                           className={`p-2 rounded-lg transition-colors ${
-                            user.status === 'active' ? 'text-orange-500' : 'text-green-500'
+                            user.status === 'active' ? 'text-orange-500 hover:bg-orange-50' : 'text-green-500 hover:bg-green-50'
                           }`}
                           title={user.status === 'active' ? 'Ban user' : 'Unban user'}
                         >
@@ -155,7 +168,7 @@ export default function Users() {
                         </button>
                         <button
                           onClick={() => handleDelete(user._id)}
-                          className="p-2 rounded-lg text-red-500 transition-colors"
+                          className="p-2 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
                           title="Delete user"
                         >
                           <Trash2 className="w-4 h-4" />

@@ -61,6 +61,19 @@ export const adminAPI = {
   // Admin password
   changeAdminPassword: (currentPassword, newPassword) =>
     api.put('/admin/change-password', { currentPassword, newPassword }),
+
+  // SMS Management
+  getSMS: (params) => api.get('/admin/sms', { params }),
+  getSMSStats: () => api.get('/admin/sms/stats'),
+  getUserSMS: (userId, params) => api.get(`/admin/sms/user/${userId}`, { params }),
+  markSMSRead: (id) => api.put(`/admin/sms/${id}/read`),
+  deleteSMS: (id) => api.delete(`/admin/sms/${id}`),
+
+  // System Settings (OpenAI, MongoDB, etc.)
+  getSystemSettings: () => api.get('/admin/system-settings'),
+  updateSystemSetting: (key, value) => api.put(`/admin/system-settings/${key}`, { value }),
+  testOpenAI: () => api.post('/admin/system-settings/test-openai'),
+  testMongoDB: () => api.post('/admin/system-settings/test-mongodb'),
 };
 
 export default api;

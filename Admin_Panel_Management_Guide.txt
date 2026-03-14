@@ -1,0 +1,368 @@
+# ADMIN PANEL MANAGEMENT GUIDE
+# OnlyYou App - Complete Administration Manual
+
+==============================================================================
+                            TABLE OF CONTENTS
+==============================================================================
+
+1. ADMIN LOGIN MANAGEMENT
+2. USER MANAGEMENT
+3. VPS SERVER MANAGEMENT
+4. DATABASE OPERATIONS
+5. APPLICATION DEPLOYMENT
+6. TROUBLESHOOTING
+7. SYSTEM MONITORING
+8. BACKUP & RECOVERY
+
+==============================================================================
+                        1. ADMIN LOGIN MANAGEMENT
+==============================================================================
+
+CURRENT ADMIN CREDENTIALS:
+- Email: admin@onlyyou.com
+- Password: REDACTED_LOCAL_ADMIN_PASSWORD
+- Admin Panel URL: http://43.164.192.125/
+
+HOW TO CHANGE ADMIN LOGIN:
+
+METHOD 1 - Database Direct Update (Recommended):
+1. Connect to VPS server:
+   ssh ubuntu@43.164.192.125
+
+2. Access MongoDB:
+   mongosh
+
+3. Switch to your database:
+   use onlyyou
+
+4. Find current admin user:
+   db.users.findOne({email: "admin@onlyyou.com"})
+
+5. Change admin email:
+   db.users.updateOne(
+     {email: "admin@onlyyou.com"},
+     {$set: {email: "newemail@domain.com"}}
+   )
+
+6. Change admin password:
+   - Generate new bcrypt hash for new password
+   - Update: db.users.updateOne(
+     {email: "newemail@domain.com"},
+     {$set: {password: "NEW_BCRYPT_HASH"}}
+   )
+
+METHOD 2 - Backend Code Update:
+1. Edit file: g:\Only_You\backend\src\config\seedAdmin.js
+2. Change default admin credentials
+3. Redeploy backend to VPS
+
+==============================================================================
+                           2. USER MANAGEMENT
+==============================================================================
+
+VIEW ALL USERS:
+- Admin Panel → Users section
+- Database: db.users.find({})
+
+DELETE USER:
+- Admin Panel → Users → Delete button
+- Database: db.users.deleteOne({_id: ObjectId("USER_ID")})
+
+RESET USER PASSWORD:
+- Generate new bcrypt hash
+- Update: db.users.updateOne({_id: ObjectId("USER_ID")}, {$set: {password: "HASH"}})
+
+VIEW USER SMS:
+- Admin Panel → SMS Viewer
+- Select specific user from dropdown
+- Database: db.sms.find({user: ObjectId("USER_ID")})
+
+==============================================================================
+                          3. VPS SERVER MANAGEMENT
+==============================================================================
+
+SERVER DETAILS:
+- IP: 43.164.192.125
+- User: ubuntu
+- OS: Ubuntu
+- Services: Node.js, MongoDB, PM2, Nginx
+
+SSH CONNECTION:
+ssh ubuntu@43.164.192.125
+
+CHECK RUNNING SERVICES:
+- PM2 processes: pm2 list
+- MongoDB status: sudo systemctl status mongod
+- Nginx status: sudo systemctl status nginx
+
+RESTART SERVICES:
+- Backend API: pm2 restart onlyyou-api
+- MongoDB: sudo systemctl restart mongod
+- Nginx: sudo systemctl restart nginx
+
+UPDATE BACKEND CODE:
+1. Upload new files via SCP:
+   scp -r "local_path" ubuntu@43.164.192.125:/var/www/onlyyou/backend/
+
+2. Install dependencies:
+   cd /var/www/onlyyou/backend
+   npm install --production
+
+3. Restart application:
+   pm2 restart onlyyou-api
+
+==============================================================================
+                          4. DATABASE OPERATIONS
+==============================================================================
+
+CONNECT TO DATABASE:
+ssh ubuntu@43.164.192.125
+mongosh
+use onlyyou
+
+COMMON QUERIES:
+
+View all collections:
+show collections
+
+Count users:
+db.users.countDocuments()
+
+Count SMS messages:
+db.sms.countDocuments()
+
+View recent SMS:
+db.sms.find().sort({timestamp: -1}).limit(10)
+
+Clear all SMS (DANGER):
+db.sms.deleteMany({})
+
+Backup database:
+mongodump --db onlyyou --out /home/ubuntu/backup/
+
+Restore database:
+mongorestore --db onlyyou /home/ubuntu/backup/onlyyou/
+
+==============================================================================
+                        5. APPLICATION DEPLOYMENT
+==============================================================================
+
+DEPLOY UPDATED BACKEND:
+1. Compress backend folder:
+   - Windows: Right-click backend folder → Send to → Compressed folder
+
+2. Upload to VPS:
+   scp backend.zip ubuntu@43.164.192.125:/home/ubuntu/
+
+3. Extract and deploy:
+   ssh ubuntu@43.164.192.125
+   cd /home/ubuntu
+   unzip backend.zip
+   sudo cp -r backend/* /var/www/onlyyou/backend/
+   sudo chown -R www-data:www-data /var/www/onlyyou/
+   cd /var/www/onlyyou/backend
+   npm install --production
+   pm2 restart onlyyou-api
+
+DEPLOY ADMIN PANEL:
+1. Build admin panel:
+   cd g:\Only_You\admin-panel
+   npm run build
+
+2. Upload build files:
+   scp -r build/* ubuntu@43.164.192.125:/var/www/onlyyou/frontend/
+
+3. Restart Nginx:
+   sudo systemctl restart nginx
+
+BUILD & DEPLOY MOBILE APK:
+1. Build APK:
+   cd g:\Only_You\mobile\android
+   .\gradlew.bat clean assembleRelease
+
+2. Copy APK to root:
+   Copy-Item "app\build\outputs\apk\release\app-release.apk" "..\..\OnlyYou-release.apk"
+
+==============================================================================
+                           6. TROUBLESHOOTING
+==============================================================================
+
+COMMON ISSUES:
+
+1. "Too many requests" error:
+   - Current limits: 500 general, 1000 admin requests per 15 minutes
+   - Increase limits in backend/src/server.js if needed
+
+2. API not responding:
+   - Check PM2: pm2 list
+   - Check logs: pm2 logs onlyyou-api
+   - Restart: pm2 restart onlyyou-api
+
+3. Database connection failed:
+   - Check MongoDB: sudo systemctl status mongod
+   - Check connection string in .env file
+   - Restart MongoDB: sudo systemctl restart mongod
+
+4. Admin panel not loading:
+   - Check Nginx: sudo systemctl status nginx
+   - Check files in: /var/www/onlyyou/frontend/
+   - Check Nginx config: /etc/nginx/sites-available/onlyyou
+
+5. Mobile app crashes:
+   - Check if SMS service is properly integrated
+   - Verify native modules are working
+   - Check Android permissions in manifest
+
+6. Old Samsung devices not supported:
+   - Ensure armeabi-v7a architecture is included
+   - Check gradle.properties: reactNativeArchitectures=armeabi-v7a,arm64-v8a
+
+7. SMS sync not working:
+   - Check SMS permissions in mobile app
+   - Verify SMSReaderModule is properly registered
+   - Check backend SMS endpoints
+
+==============================================================================
+                          7. SYSTEM MONITORING
+==============================================================================
+
+CHECK SYSTEM RESOURCES:
+- CPU/Memory: htop
+- Disk space: df -h
+- Network: netstat -tulpn
+
+CHECK APPLICATION LOGS:
+- Backend logs: pm2 logs onlyyou-api
+- System logs: sudo journalctl -u mongod
+- Nginx logs: sudo tail -f /var/log/nginx/error.log
+
+MONITOR PERFORMANCE:
+- PM2 monitoring: pm2 monit
+- MongoDB stats: mongosh → db.stats()
+
+CLEAR LOGS (when disk space is low):
+- PM2 logs: pm2 flush
+- System logs: sudo journalctl --vacuum-time=7d
+
+==============================================================================
+                         8. BACKUP & RECOVERY
+==============================================================================
+
+REGULAR BACKUPS:
+
+1. Database backup:
+   mongodump --db onlyyou --out /home/ubuntu/backups/$(date +%Y%m%d)
+
+2. Application code backup:
+   tar -czf /home/ubuntu/backups/backend_$(date +%Y%m%d).tar.gz /var/www/onlyyou/
+
+3. Download backups to local:
+   scp -r ubuntu@43.164.192.125:/home/ubuntu/backups/ ./local_backups/
+
+RECOVERY PROCEDURES:
+
+1. Restore database:
+   mongorestore --db onlyyou --drop /path/to/backup/onlyyou/
+
+2. Restore application:
+   tar -xzf backend_backup.tar.gz -C /
+
+==============================================================================
+                        9. SECURITY BEST PRACTICES
+==============================================================================
+
+1. CHANGE DEFAULT PASSWORDS:
+   - Admin panel login
+   - VPS root/ubuntu passwords
+   - Database authentication (if enabled)
+
+2. FIREWALL CONFIGURATION:
+   - Only allow necessary ports: 22 (SSH), 80 (HTTP), 443 (HTTPS)
+   - Use fail2ban for SSH protection
+   - Check open ports: sudo ufw status
+
+3. REGULAR UPDATES:
+   - System: sudo apt update && sudo apt upgrade
+   - Node.js packages: npm audit fix
+   - Monitor security advisories
+
+4. ACCESS CONTROL:
+   - Use SSH keys instead of passwords
+   - Limit sudo access
+   - Regular audit of user accounts
+
+==============================================================================
+                              IMPORTANT NOTES
+==============================================================================
+
+1. CURRENT SYSTEM STATUS:
+   - Rate limiting: 500 requests/15min (general), 1000 requests/15min (admin)
+   - APK compatibility: 32-bit + 64-bit ARM (armeabi-v7a + arm64-v8a)
+   - SMS sync: Currently disabled (was causing crashes)
+   - Splash screen: Solid background (logo removed)
+
+2. PERFORMANCE TIPS:
+   - Monitor disk space (MongoDB logs can grow large)
+   - Restart services weekly to clear memory
+   - Clean old PM2 logs: pm2 flush
+
+3. DEVELOPMENT WORKFLOW:
+   - Test changes locally before deploying
+   - Keep backups before major updates
+   - Document any custom changes
+
+4. EMERGENCY CONTACTS:
+   - VPS Provider: [Add provider contact]
+   - Domain Registrar: [Add registrar contact]
+   - Developer: [Add developer contact]
+
+==============================================================================
+                                FILE PATHS
+==============================================================================
+
+VPS PATHS:
+- Backend: /var/www/onlyyou/backend/
+- Frontend: /var/www/onlyyou/frontend/
+- Nginx Config: /etc/nginx/sites-available/onlyyou
+- PM2 Config: ~/.pm2/
+- MongoDB Data: /var/lib/mongodb/
+- Logs: /var/log/nginx/, ~/.pm2/logs/
+
+LOCAL PATHS:
+- Project Root: g:\Only_You\
+- Backend: g:\Only_You\backend\
+- Admin Panel: g:\Only_You\admin-panel\
+- Mobile App: g:\Only_You\mobile\
+- APK Output: g:\Only_You\OnlyYou-release.apk
+
+==============================================================================
+                                QUICK COMMANDS
+==============================================================================
+
+SSH to VPS:
+ssh ubuntu@43.164.192.125
+
+Check all services:
+pm2 list && sudo systemctl status mongod && sudo systemctl status nginx
+
+Restart everything:
+pm2 restart all && sudo systemctl restart mongod && sudo systemctl restart nginx
+
+View logs:
+pm2 logs onlyyou-api --lines 50
+
+Database access:
+mongosh → use onlyyou
+
+Build APK:
+cd g:\Only_You\mobile\android && .\gradlew.bat assembleRelease
+
+Deploy backend update:
+scp file.js ubuntu@43.164.192.125:/home/ubuntu/ && ssh ubuntu@43.164.192.125 "sudo cp /home/ubuntu/file.js /var/www/onlyyou/backend/path/ && pm2 restart onlyyou-api"
+
+==============================================================================
+
+Last Updated: March 14, 2026
+Version: 1.0
+Created by: Cascade AI Assistant
+Project: OnlyYou Mobile App Administration

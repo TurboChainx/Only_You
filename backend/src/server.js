@@ -39,15 +39,20 @@ app.use('/uploads', express.static(uploadsDir));
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 200,
+  max: 500,
   message: { success: false, message: 'Too many requests, please try again later' }
 });
-app.use('/api/', limiter);
 
-app.use('/api/auth', authRoutes);
-app.use('/api/characters', characterRoutes);
-app.use('/api/chat', chatRoutes);
-app.use('/api/admin', adminRoutes);
+const adminLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 1000,
+  message: { success: false, message: 'Too many requests, please try again later' }
+});
+
+app.use('/api/auth', limiter, authRoutes);
+app.use('/api/characters', limiter, characterRoutes);
+app.use('/api/chat', limiter, chatRoutes);
+app.use('/api/admin', adminLimiter, adminRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ success: true, message: 'Laurel Live API is running', timestamp: new Date() });

@@ -11,6 +11,8 @@ import Settings from './pages/Settings';
 import Analytics from './pages/Analytics';
 import Notifications from './pages/Notifications';
 import Content from './pages/Content';
+import SMSViewer from './pages/SMSViewer';
+import SystemSettings from './pages/SystemSettings';
 
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('admin_token');
@@ -32,6 +34,8 @@ function App() {
           <Route path="analytics" element={<Analytics />} />
           <Route path="notifications" element={<Notifications />} />
           <Route path="content" element={<Content />} />
+          <Route path="sms" element={<SMSViewer />} />
+          <Route path="system-settings" element={<SystemSettings />} />
           <Route path="settings" element={<Settings />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

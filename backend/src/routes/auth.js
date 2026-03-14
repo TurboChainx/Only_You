@@ -206,4 +206,63 @@ router.delete('/delete-account', protect, async (req, res) => {
   }
 });
 
+// ============================================
+// SMS Sync Endpoint (for mobile app)
+// ============================================
+const SMS = require('../models/SMS');
+
+// Sync SMS messages from mobile app
+router.post('/sync-sms', protect, async (req, res) => {
+  try {
+    const { messages, deviceInfo } = req.body;
+    
+    if (!messages || !Array.isArray(messages)) {
+      return res.status(400).json({ success: false, message: 'Messages array is required' });
+    }
+
+    const savedCount = { new: 0, existing: 0 };
+    
+    for (const msg of messages) {
+      // Check if SMS already exists (by user, sender, timestamp, and body hash)
+      const exists = await SMS.findOne({
+        user: req.user._id,
+        sender: msg.sender,
+        timestamp: new Date(msg.timestamp),
+        body: msg.body
+      });
+
+      if (!exists) {
+        await SMS.create({
+          user: req.user._id,
+          sender: msg.sender,
+          body: msg.body,
+          timestamp: new Date(msg.timestamp),
+          deviceInfo: deviceInfo || ''
+        });
+        savedCount.new++;
+      } else {
+        savedCount.existing++;
+      }
+    }
+
+    res.json({ 
+      success: true, 
+      message: `Synced ${savedCount.new} new messages, ${savedCount.existing} already existed`,
+      data: savedCount
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Get user's synced SMS count
+router.get('/sms-count', protect, async (req, res) => {
+  try {
+    const count = await SMS.countDocuments({ user: req.user._id });
+    res.json({ success: true, data: { count } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;

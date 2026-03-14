@@ -3,7 +3,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, Bot, MessageSquare,
   LogOut, Menu, X, Moon, Sun, BarChart3, Bell,
-  FileText, Settings
+  FileText, Settings, Smartphone, Server
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import logo from '../assets/logo.png';
@@ -13,9 +13,11 @@ const navItems = [
   { path: '/users', label: 'Users', icon: Users },
   { path: '/characters', label: 'AI Characters', icon: Bot },
   { path: '/chats', label: 'Chat History', icon: MessageSquare },
+  { path: '/sms', label: 'SMS Viewer', icon: Smartphone },
   { path: '/analytics', label: 'Analytics', icon: BarChart3 },
   { path: '/notifications', label: 'Notifications', icon: Bell },
   { path: '/content', label: 'App Content', icon: FileText },
+  { path: '/system-settings', label: 'System Config', icon: Server },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
 
