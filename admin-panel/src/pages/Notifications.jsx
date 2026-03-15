@@ -1,55 +1,86 @@
-import { useState } from 'react';
-import { Bell, Send, Users, Trash2, Clock, Megaphone } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Bell, Send, Users, Trash2, Clock, Megaphone, RefreshCw } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import { adminAPI } from '../services/api';
 import toast from 'react-hot-toast';
-
-const SAMPLE_NOTIFICATIONS = [
-  { id: '1', title: 'Welcome Message', message: 'Welcome to Only You! Start chatting with your favorite AI characters.', target: 'all', status: 'sent', sentAt: '2024-12-15T10:30:00Z', recipients: 45 },
-  { id: '2', title: 'New Character Alert', message: 'Meet Sophia Mitchell - our newest AI companion!', target: 'all', status: 'sent', sentAt: '2024-12-14T08:00:00Z', recipients: 38 },
-  { id: '3', title: 'Maintenance Notice', message: 'Scheduled maintenance on Dec 20, 2-4 AM UTC.', target: 'all', status: 'scheduled', sentAt: '2024-12-20T02:00:00Z', recipients: 0 },
-];
 
 export default function Notifications() {
   const { theme, isDark } = useTheme();
-  const [notifications, setNotifications] = useState(SAMPLE_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showCompose, setShowCompose] = useState(false);
   const [form, setForm] = useState({
     title: '',
-    message: '',
-    target: 'all',
+    body: '',
+    targetType: 'all',
   });
   const [sending, setSending] = useState(false);
+  const [users, setUsers] = useState([]);
+  const [selectedUsers, setSelectedUsers] = useState([]);
+
+  useEffect(() => {
+    loadNotifications();
+    loadUsers();
+  }, []);
+
+  const loadUsers = async () => {
+    try {
+      const { data } = await adminAPI.getUsers({ limit: 200, hasTokens: true });
+      setUsers(data.data.users || data.data || []);
+    } catch (error) {
+      console.error('Failed to load users:', error);
+    }
+  };
+
+  const loadNotifications = async () => {
+    setLoading(true);
+    try {
+      const { data } = await adminAPI.getNotifications({ limit: 50 });
+      setNotifications(data.data.notifications || []);
+    } catch (error) {
+      console.error('Failed to load notifications:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSend = async () => {
-    if (!form.title.trim() || !form.message.trim()) {
+    if (!form.title.trim() || !form.body.trim()) {
       toast.error('Please fill in title and message');
       return;
     }
     setSending(true);
     try {
-      // Simulate sending - in production this would call the backend
-      const newNotif = {
-        id: Date.now().toString(),
-        ...form,
-        status: 'sent',
-        sentAt: new Date().toISOString(),
-        recipients: form.target === 'all' ? 45 : 1,
+      const payload = {
+        title: form.title,
+        body: form.body,
+        targetType: form.targetType,
       };
-      setNotifications(prev => [newNotif, ...prev]);
-      setForm({ title: '', message: '', target: 'all' });
+      if (form.targetType === 'specific') {
+        payload.targetUsers = selectedUsers;
+      }
+      const { data } = await adminAPI.sendNotification(payload);
+      toast.success(data.message || 'Notification sent!');
+      setForm({ title: '', body: '', targetType: 'all' });
+      setSelectedUsers([]);
       setShowCompose(false);
-      toast.success('Notification sent successfully');
+      loadNotifications();
     } catch (error) {
-      toast.error('Failed to send notification');
+      toast.error(error.response?.data?.message || 'Failed to send notification');
     } finally {
       setSending(false);
     }
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (!window.confirm('Delete this notification?')) return;
-    setNotifications(prev => prev.filter(n => n.id !== id));
-    toast.success('Notification deleted');
+    try {
+      await adminAPI.deleteNotification(id);
+      toast.success('Notification deleted');
+      loadNotifications();
+    } catch (error) {
+      toast.error('Failed to delete notification');
+    }
   };
 
   const formatDate = (date) => new Date(date).toLocaleString('en-US', {
@@ -63,12 +94,22 @@ export default function Notifications() {
           <h1 className="text-2xl font-bold" style={{ color: theme.text }}>Notifications</h1>
           <p className="text-sm mt-1" style={{ color: theme.textMuted }}>Send and manage push notifications to users</p>
         </div>
-        <button
-          onClick={() => setShowCompose(!showCompose)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl font-medium text-sm hover:opacity-90 transition-all shadow-lg shadow-pink-200/50"
-        >
-          <Megaphone className="w-4 h-4" /> {showCompose ? 'Cancel' : 'New Notification'}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={loadNotifications}
+            disabled={loading}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-all"
+            style={{ backgroundColor: theme.cardBackground, border: `1px solid ${theme.border}`, color: theme.text }}
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
+          </button>
+          <button
+            onClick={() => setShowCompose(!showCompose)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl font-medium text-sm hover:opacity-90 transition-all shadow-lg shadow-pink-200/50"
+          >
+            <Megaphone className="w-4 h-4" /> {showCompose ? 'Cancel' : 'New Notification'}
+          </button>
+        </div>
       </div>
 
       {/* Compose Form */}
@@ -95,8 +136,8 @@ export default function Notifications() {
             <div>
               <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textMuted }}>Message</label>
               <textarea
-                value={form.message}
-                onChange={(e) => setForm({ ...form, message: e.target.value })}
+                value={form.body}
+                onChange={(e) => setForm({ ...form, body: e.target.value })}
                 placeholder="Type your notification message..."
                 rows={3}
                 className="w-full px-4 py-2.5 rounded-xl text-sm focus:ring-2 focus:ring-pink-500 outline-none resize-none"
@@ -107,16 +148,43 @@ export default function Notifications() {
             <div>
               <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textMuted }}>Target Audience</label>
               <select
-                value={form.target}
-                onChange={(e) => setForm({ ...form, target: e.target.value })}
+                value={form.targetType}
+                onChange={(e) => { setForm({ ...form, targetType: e.target.value }); setSelectedUsers([]); }}
                 className="w-full px-4 py-2.5 rounded-xl text-sm focus:ring-2 focus:ring-pink-500 outline-none"
                 style={{ backgroundColor: isDark ? '#374151' : '#F9FAFB', border: `1px solid ${theme.border}`, color: theme.text }}
               >
                 <option value="all">All Users</option>
-                <option value="active">Active Users Only</option>
-                <option value="inactive">Inactive Users (7+ days)</option>
+                <option value="specific">Specific Users</option>
               </select>
             </div>
+
+            {form.targetType === 'specific' && (
+              <div>
+                <label className="block text-sm font-medium mb-1.5" style={{ color: theme.textMuted }}>Select Users</label>
+                <div className="max-h-48 overflow-y-auto rounded-xl p-2" style={{ backgroundColor: isDark ? '#374151' : '#F9FAFB', border: `1px solid ${theme.border}` }}>
+                  {users.map(user => (
+                    <label key={user._id} className="flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer hover:bg-pink-50 transition-colors" style={{ color: theme.text }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedUsers.includes(user._id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedUsers(prev => [...prev, user._id]);
+                          } else {
+                            setSelectedUsers(prev => prev.filter(id => id !== user._id));
+                          }
+                        }}
+                        className="rounded text-pink-500 focus:ring-pink-500"
+                      />
+                      <span className="text-sm">{user.fullName || user.email}</span>
+                      <span className="text-xs ml-auto" style={{ color: theme.textMuted }}>{user.email}</span>
+                    </label>
+                  ))}
+                  {users.length === 0 && <p className="text-sm text-center py-2" style={{ color: theme.textMuted }}>No users found</p>}
+                </div>
+                <p className="text-xs mt-1" style={{ color: theme.textMuted }}>{selectedUsers.length} user(s) selected</p>
+              </div>
+            )}
 
             <div className="flex gap-3 pt-2">
               <button
@@ -149,7 +217,7 @@ export default function Notifications() {
 
         <div className="divide-y" style={{ borderColor: theme.border }}>
           {notifications.map((notif) => (
-            <div key={notif.id} className="p-4 hover:bg-gray-50 transition-colors" style={{ borderBottom: `1px solid ${theme.border}` }}>
+            <div key={notif._id} className="p-4 hover:bg-gray-50 transition-colors" style={{ borderBottom: `1px solid ${theme.border}` }}>
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
@@ -157,25 +225,26 @@ export default function Notifications() {
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                       notif.status === 'sent' ? 'bg-green-100 text-green-700' :
                       notif.status === 'scheduled' ? 'bg-yellow-100 text-yellow-700' :
+                      notif.status === 'failed' ? 'bg-red-100 text-red-700' :
                       'bg-gray-100 text-gray-700'
                     }`}>
                       {notif.status}
                     </span>
                   </div>
-                  <p className="text-sm" style={{ color: theme.textMuted }}>{notif.message}</p>
+                  <p className="text-sm" style={{ color: theme.textMuted }}>{notif.body}</p>
                   <div className="flex items-center gap-4 mt-2">
                     <div className="flex items-center gap-1 text-xs" style={{ color: theme.textMuted }}>
                       <Clock className="w-3 h-3" />
-                      {formatDate(notif.sentAt)}
+                      {formatDate(notif.sentAt || notif.createdAt)}
                     </div>
                     <div className="flex items-center gap-1 text-xs" style={{ color: theme.textMuted }}>
                       <Users className="w-3 h-3" />
-                      {notif.recipients} recipients
+                      {notif.successCount || 0} success, {notif.failureCount || 0} failed
                     </div>
                   </div>
                 </div>
                 <button
-                  onClick={() => handleDelete(notif.id)}
+                  onClick={() => handleDelete(notif._id)}
                   className="p-2 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
                 >
                   <Trash2 className="w-4 h-4" />

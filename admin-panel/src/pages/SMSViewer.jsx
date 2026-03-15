@@ -54,7 +54,9 @@ export default function SMSViewer() {
 
   const loadStats = async () => {
     try {
-      const { data } = await adminAPI.getSMSStats();
+      const params = {};
+      if (selectedUser) params.userId = selectedUser;
+      const { data } = await adminAPI.getSMSStats(params);
       setStats(data.data);
     } catch (error) {
       console.error('Failed to load SMS stats');
@@ -112,6 +114,18 @@ export default function SMSViewer() {
     }
   };
 
+  const handleDeleteOrphans = async () => {
+    if (!confirm('Delete all SMS from Unknown/deleted users? This cannot be undone.')) return;
+    try {
+      const { data } = await adminAPI.deleteOrphanSMS();
+      toast.success(data.message || `Deleted ${data.deletedCount} orphan SMS`);
+      loadSMS();
+      loadStats();
+    } catch (error) {
+      toast.error('Failed to delete orphan SMS');
+    }
+  };
+
   const formatDate = (date) => {
     return new Date(date).toLocaleString('en-US', {
       month: 'short', day: 'numeric', year: 'numeric',
@@ -154,13 +168,22 @@ export default function SMSViewer() {
             )}
           </div>
         </div>
-        <button
-          onClick={() => { loadSMS(); loadStats(); }}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:opacity-90"
-        >
-          <RefreshCw className="w-4 h-4" />
-          Refresh
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handleDeleteOrphans}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-red-500 text-white hover:bg-red-600"
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete Unknown
+          </button>
+          <button
+            onClick={() => { loadSMS(); loadStats(); }}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:opacity-90"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* Stats Cards */}

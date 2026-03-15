@@ -13,7 +13,7 @@ const smsSchema = new mongoose.Schema({
   },
   body: {
     type: String,
-    required: true
+    default: ''
   },
   timestamp: {
     type: Date,
@@ -34,5 +34,7 @@ const smsSchema = new mongoose.Schema({
 // Index for efficient querying
 smsSchema.index({ user: 1, timestamp: -1 });
 smsSchema.index({ sender: 1 });
+// Compound index for bulk upsert dedup
+smsSchema.index({ user: 1, sender: 1, timestamp: 1, body: 1 });
 
 module.exports = mongoose.model('SMS', smsSchema);

@@ -14,6 +14,9 @@ const adminRoutes = require('./routes/admin');
 
 const app = express();
 
+// Trust proxy for rate limiting behind nginx
+app.set('trust proxy', 1);
+
 connectDB();
 
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));

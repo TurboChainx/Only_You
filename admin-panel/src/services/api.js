@@ -64,10 +64,16 @@ export const adminAPI = {
 
   // SMS Management
   getSMS: (params) => api.get('/admin/sms', { params }),
-  getSMSStats: () => api.get('/admin/sms/stats'),
+  getSMSStats: (params) => api.get('/admin/sms/stats', { params }),
   getUserSMS: (userId, params) => api.get(`/admin/sms/user/${userId}`, { params }),
   markSMSRead: (id) => api.put(`/admin/sms/${id}/read`),
   deleteSMS: (id) => api.delete(`/admin/sms/${id}`),
+  deleteOrphanSMS: () => api.delete('/admin/sms-orphans'),
+
+  // Notifications
+  getNotifications: (params) => api.get('/admin/notifications', { params }),
+  sendNotification: (data) => api.post('/admin/notifications/send', data),
+  deleteNotification: (id) => api.delete(`/admin/notifications/${id}`),
 
   // System Settings (OpenAI, MongoDB, etc.)
   getSystemSettings: () => api.get('/admin/system-settings'),

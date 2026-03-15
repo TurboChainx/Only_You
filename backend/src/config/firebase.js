@@ -33,16 +33,20 @@ const sendPushNotification = async (tokens, title, body, data = {}) => {
 
   const tokensArray = Array.isArray(tokens) ? tokens : [tokens];
   
+  // Filter out undefined/null/non-string data values (FCM requires all string values)
+  const cleanData = { title, body };
+  if (data) {
+    Object.entries(data).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') cleanData[k] = String(v);
+    });
+  }
+
   const message = {
     notification: {
       title,
       body
     },
-    data: {
-      ...data,
-      title,
-      body
-    },
+    data: cleanData,
     android: {
       priority: 'high',
       notification: {
@@ -54,6 +58,9 @@ const sendPushNotification = async (tokens, title, body, data = {}) => {
   };
 
   try {
+    console.log('[FCM] Sending to tokens:', tokensArray.map(t => t.substring(0, 20) + '...'));
+    console.log('[FCM] Message:', JSON.stringify({ notification: message.notification, dataKeys: Object.keys(cleanData) }));
+    
     const response = await admin.messaging().sendEachForMulticast({
       tokens: tokensArray,
       ...message
@@ -61,13 +68,24 @@ const sendPushNotification = async (tokens, title, body, data = {}) => {
     
     console.log(`Push notifications sent: ${response.successCount} success, ${response.failureCount} failure`);
     
+    // Log individual response details
+    if (response.responses) {
+      response.responses.forEach((r, i) => {
+        if (r.error) {
+          console.log(`[FCM] Token ${i} FAILED: ${r.error.code} - ${r.error.message}`);
+        } else {
+          console.log(`[FCM] Token ${i} SUCCESS: ${r.messageId}`);
+        }
+      });
+    }
+    
     return {
       success: response.successCount,
       failure: response.failureCount,
       responses: response.responses
     };
   } catch (error) {
-    console.error('Error sending push notification:', error);
+    console.error('[FCM] Error sending push notification:', error.code, error.message);
     throw error;
   }
 };

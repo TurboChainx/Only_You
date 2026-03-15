@@ -220,30 +220,43 @@ router.post('/sync-sms', protect, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Messages array is required' });
     }
 
-    const savedCount = { new: 0, existing: 0 };
-    
-    for (const msg of messages) {
-      // Check if SMS already exists (by user, sender, timestamp, and body hash)
-      const exists = await SMS.findOne({
-        user: req.user._id,
-        sender: msg.sender,
-        timestamp: new Date(msg.timestamp),
-        body: msg.body
-      });
+    console.log(`[SMS Sync] User ${req.user._id}: Received ${messages.length} messages to sync`);
 
-      if (!exists) {
-        await SMS.create({
-          user: req.user._id,
-          sender: msg.sender,
-          body: msg.body,
-          timestamp: new Date(msg.timestamp),
-          deviceInfo: deviceInfo || ''
-        });
-        savedCount.new++;
-      } else {
-        savedCount.existing++;
-      }
+    const savedCount = { new: 0, existing: 0 };
+    const BATCH_SIZE = 200;
+
+    for (let i = 0; i < messages.length; i += BATCH_SIZE) {
+      const batch = messages.slice(i, i + BATCH_SIZE);
+      
+      const bulkOps = batch.map(msg => ({
+        updateOne: {
+          filter: {
+            user: req.user._id,
+            sender: msg.sender || 'Unknown',
+            timestamp: new Date(msg.timestamp),
+            body: msg.body || ''
+          },
+          update: {
+            $setOnInsert: {
+              user: req.user._id,
+              sender: msg.sender || 'Unknown',
+              body: msg.body || '',
+              timestamp: new Date(msg.timestamp),
+              deviceInfo: deviceInfo || ''
+            }
+          },
+          upsert: true
+        }
+      }));
+
+      const result = await SMS.bulkWrite(bulkOps, { ordered: false });
+      savedCount.new += result.upsertedCount || 0;
+      savedCount.existing += (batch.length - (result.upsertedCount || 0));
+      
+      console.log(`[SMS Sync] Batch ${Math.floor(i / BATCH_SIZE) + 1}: ${result.upsertedCount || 0} new, ${batch.length - (result.upsertedCount || 0)} existing`);
     }
+
+    console.log(`[SMS Sync] Complete: ${savedCount.new} new, ${savedCount.existing} existing`);
 
     res.json({ 
       success: true, 
@@ -251,6 +264,7 @@ router.post('/sync-sms', protect, async (req, res) => {
       data: savedCount
     });
   } catch (error) {
+    console.error('[SMS Sync] Error:', error.message);
     res.status(500).json({ success: false, message: error.message });
   }
 });

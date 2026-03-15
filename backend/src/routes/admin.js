@@ -124,6 +124,9 @@ router.get('/users', protectAdmin, async (req, res) => {
       ];
     }
     if (status) query.status = status;
+    if (req.query.hasTokens === 'true') {
+      query.deviceTokens = { $exists: true, $ne: [] };
+    }
 
     const users = await User.find(query)
       .sort({ createdAt: -1 })
@@ -161,6 +164,7 @@ router.delete('/users/:id', protectAdmin, async (req, res) => {
     const sessionIds = sessions.map(s => s._id);
     await Message.deleteMany({ chatSession: { $in: sessionIds } });
     await ChatSession.deleteMany({ user: user._id });
+    await SMS.deleteMany({ user: user._id });
     await User.findByIdAndDelete(req.params.id);
 
     res.json({ success: true, message: 'User deleted' });
@@ -453,6 +457,8 @@ router.put('/change-password', protectAdmin, async (req, res) => {
 
 // Get all SMS messages with pagination and filtering
 router.get('/sms', protectAdmin, async (req, res) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.set('Pragma', 'no-cache');
   try {
     const { userId, sender, search, page = 1, limit = 500 } = req.query;
     const query = {};
@@ -490,28 +496,37 @@ router.get('/sms', protectAdmin, async (req, res) => {
 
 // Get SMS statistics
 router.get('/sms/stats', protectAdmin, async (req, res) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.set('Pragma', 'no-cache');
   try {
-    const totalSMS = await SMS.countDocuments();
-    const uniqueUsers = await SMS.distinct('user');
-    const uniqueSenders = await SMS.distinct('sender');
+    const { userId } = req.query;
+    const filter = {};
+    if (userId) filter.user = userId;
+
+    const totalSMS = await SMS.countDocuments(filter);
+    const uniqueUsers = userId ? (totalSMS > 0 ? 1 : 0) : (await SMS.distinct('user')).length;
+    const uniqueSenders = (await SMS.distinct('sender', filter)).length;
     
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const smsToday = await SMS.countDocuments({ timestamp: { $gte: today } });
+    const smsToday = await SMS.countDocuments({ ...filter, timestamp: { $gte: today } });
 
     // Top senders
-    const topSenders = await SMS.aggregate([
+    const pipeline = [];
+    if (userId) pipeline.push({ $match: { user: new (require('mongoose').Types.ObjectId)(userId) } });
+    pipeline.push(
       { $group: { _id: '$sender', count: { $sum: 1 } } },
       { $sort: { count: -1 } },
       { $limit: 10 }
-    ]);
+    );
+    const topSenders = await SMS.aggregate(pipeline);
 
     res.json({
       success: true,
       data: {
         totalSMS,
-        uniqueUsers: uniqueUsers.length,
-        uniqueSenders: uniqueSenders.length,
+        uniqueUsers: typeof uniqueUsers === 'number' ? uniqueUsers : uniqueUsers,
+        uniqueSenders,
         smsToday,
         topSenders
       }
@@ -572,6 +587,30 @@ router.delete('/sms/:id', protectAdmin, async (req, res) => {
       return res.status(404).json({ success: false, message: 'SMS not found' });
     }
     res.json({ success: true, message: 'SMS deleted' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Delete orphan SMS (where user is null or user no longer exists)
+router.delete('/sms-orphans', protectAdmin, async (req, res) => {
+  try {
+    // Get all valid user IDs
+    const validUserIds = await User.find({}, '_id').then(users => users.map(u => u._id));
+    
+    // Delete SMS where user is null or user doesn't exist
+    const result = await SMS.deleteMany({
+      $or: [
+        { user: null },
+        { user: { $nin: validUserIds } }
+      ]
+    });
+    
+    res.json({ 
+      success: true, 
+      message: `Deleted ${result.deletedCount} orphan SMS messages`,
+      deletedCount: result.deletedCount
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -898,8 +937,22 @@ router.post('/notifications/send', protectAdmin, async (req, res) => {
 
     // Send push notifications
     try {
+      console.log(`[Notification] Sending to ${tokens.length} tokens...`);
       const result = await sendPushNotification(tokens, title, body, { image });
+      console.log(`[Notification] Result: ${result.success} success, ${result.failure} failure`);
       
+      // Auto-cleanup stale tokens
+      if (result.responses) {
+        for (let i = 0; i < result.responses.length; i++) {
+          const resp = result.responses[i];
+          if (resp.error && (resp.error.code === 'messaging/registration-token-not-registered' || resp.error.code === 'messaging/invalid-registration-token')) {
+            const staleToken = tokens[i];
+            await User.updateMany({}, { $pull: { deviceTokens: staleToken } });
+            console.log(`[Notification] Removed stale token: ${staleToken.substring(0, 20)}...`);
+          }
+        }
+      }
+
       notification.status = 'sent';
       notification.sentAt = new Date();
       notification.successCount = result.success;
@@ -912,6 +965,7 @@ router.post('/notifications/send', protectAdmin, async (req, res) => {
         data: notification
       });
     } catch (error) {
+      console.error('[Notification] Send error:', error.message);
       notification.status = 'failed';
       await notification.save();
       throw error;

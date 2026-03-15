@@ -1,0 +1,172 @@
+# TESTING GUIDE: SMS Sync & Push Notifications
+# OnlyYou App - Feature Testing Manual
+
+==============================================================================
+                        PRE-REQUISITES
+==============================================================================
+
+1. Install the latest APK (OnlyYou-release.apk) on an Android device
+2. Admin panel access: http://43.164.192.125/
+   - Email: admin@onlyyou.com
+   - Password: REDACTED_LOCAL_ADMIN_PASSWORD
+3. The device must have SMS messages in inbox
+4. Internet connection required on both device and admin PC
+
+==============================================================================
+                    TEST 1: SMS SYNC FEATURE
+==============================================================================
+
+WHAT IT DOES:
+- Mobile app reads SMS from device inbox
+- Syncs ALL messages on first launch (full sync)
+- Then syncs NEW messages every 1 minute (incremental sync)
+- Messages appear in admin panel under "SMS Viewer"
+
+STEP-BY-STEP TEST:
+
+1. Install APK on device
+2. Open app and login (or register new account)
+3. App will request SMS permission -> TAP "Allow"
+4. Wait 5-10 seconds for initial sync to complete
+5. Open admin panel -> SMS Viewer
+6. Click "Refresh" button
+7. You should see SMS messages from the device
+
+VERIFY SMS SYNC IS WORKING:
+- Check admin panel SMS Viewer -> should show messages
+- Select the user from dropdown -> should show that user's SMS
+- Stats (Total SMS, Unique Senders, etc.) should update per user
+
+TEST NEW SMS SYNC:
+1. Send a test SMS to the device (from another phone)
+2. Wait 1-2 minutes (sync runs every 1 minute)
+3. Click "Refresh" on admin panel SMS Viewer
+4. New SMS should appear in the list
+
+TROUBLESHOOTING SMS:
+- If no SMS shows: Check if SMS permission was granted
+  -> Go to Android Settings > Apps > OnlyYou > Permissions > SMS > Allow
+- If still no SMS: Force close the app and reopen
+- The app syncs ALL inbox messages on first login, then new ones every minute
+- SMS messages are linked to the logged-in user account
+
+==============================================================================
+                TEST 2: PUSH NOTIFICATIONS
+==============================================================================
+
+WHAT IT DOES:
+- Admin sends notification from panel
+- Firebase Cloud Messaging delivers it to user's phone
+- Phone shows notification in notification bar (even when app is in background)
+
+STEP-BY-STEP TEST:
+
+1. Install APK on device
+2. Open app and login
+3. App will request notification permission (Android 13+) -> TAP "Allow"
+4. Wait 5 seconds for FCM token registration
+5. Open admin panel -> Notifications
+6. Click "New Notification"
+7. Enter:
+   - Title: "Test Notification"
+   - Body: "This is a test push notification"
+   - Target: All Users (or specific user)
+8. Click "Send"
+9. Check the device - notification should appear in notification bar
+
+TEST SCENARIOS:
+
+A) App in foreground:
+   - Keep app open on device
+   - Send notification from admin panel
+   - Should see notification in phone's notification bar
+
+B) App in background:
+   - Minimize the app (press home button)
+   - Send notification from admin panel
+   - Should see notification in phone's notification bar
+
+C) App closed:
+   - Force close the app
+   - Send notification from admin panel
+   - Should see notification in phone's notification bar
+   (Note: First login after install registers the device token)
+
+TROUBLESHOOTING NOTIFICATIONS:
+- If no notification received:
+  1. Check notification permission: Android Settings > Apps > OnlyYou > Notifications > Allow
+  2. Check if battery optimization is off: Settings > Battery > OnlyYou > Don't optimize
+  3. Force close app, reopen, login again (re-registers FCM token)
+  4. Check admin panel notification status - should show "sent" with success count > 0
+  5. If success count = 0: No device tokens registered. User needs to login first.
+
+==============================================================================
+                    TEST 3: ADMIN PANEL FEATURES
+==============================================================================
+
+A) SMS VIEWER:
+   1. Navigate to SMS Viewer
+   2. Check stats cards (Total SMS, Users with SMS, Unique Senders, Today)
+   3. Select a user from dropdown -> stats should update for that user
+   4. Click "Clear Filter" to see all SMS again
+   5. Search by sender number or message content
+   6. Click eye icon to view full message
+   7. Click refresh to load latest data
+
+B) NOTIFICATIONS:
+   1. Navigate to Notifications
+   2. View notification history (sent, scheduled, failed)
+   3. Create new notification with title and body
+   4. Send to all users or specific users
+   5. Check status after sending (sent/failed, success/failure counts)
+
+C) RATE LIMITING:
+   - Admin panel has 1000 requests per 15 minutes
+   - Regular API has 500 requests per 15 minutes
+   - You can click through pages rapidly without "Too many requests" error
+
+==============================================================================
+                    EXPECTED BEHAVIOR SUMMARY
+==============================================================================
+
+| Feature              | Expected Behavior                                    |
+|---------------------|------------------------------------------------------|
+| SMS Sync (first)    | ALL inbox SMS synced within 10 seconds of login      |
+| SMS Sync (ongoing)  | New SMS synced every 1 minute automatically          |
+| SMS on Admin Panel  | Shows all synced SMS, filterable by user              |
+| Push Notification   | Appears in phone notification bar within seconds      |
+| Notification Status | Admin panel shows sent/success/failure counts         |
+| Rate Limiting       | 1000 requests/15min for admin, no "too many" error    |
+
+==============================================================================
+                    COMMON ISSUES & FIXES
+==============================================================================
+
+1. "No SMS messages found" on admin panel:
+   - User hasn't logged into app yet (no sync happened)
+   - SMS permission not granted on device
+   - Fix: Open app, grant SMS permission, wait 10 seconds, refresh panel
+
+2. Notifications not received on phone:
+   - Notification permission not granted (Android 13+)
+   - Battery optimization killing the app
+   - User hasn't logged in (no FCM token registered)
+   - Fix: Login to app, grant notification permission, disable battery optimization
+
+3. "Too many requests" error:
+   - Upgraded to 1000 req/15min for admin
+   - If still hitting limit, wait 15 minutes
+
+4. SMS shows for wrong user / doesn't filter:
+   - SMS is linked to the user account that was logged in when synced
+   - Each user's SMS is separate
+   - Select specific user from dropdown to see their SMS
+
+5. App crashes on open:
+   - Clear app data: Settings > Apps > OnlyYou > Storage > Clear Data
+   - Reinstall APK
+
+==============================================================================
+
+Last Updated: March 15, 2026
+Version: 2.0
