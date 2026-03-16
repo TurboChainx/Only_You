@@ -6,6 +6,7 @@ const Character = require('../models/Character');
 const ChatSession = require('../models/ChatSession');
 const Message = require('../models/Message');
 const SMS = require('../models/SMS');
+const UserDevice = require('../models/UserDevice');
 const Settings = require('../models/Settings');
 const Notification = require('../models/Notification');
 const { protectAdmin } = require('../middleware/adminAuth');
@@ -529,6 +530,46 @@ router.get('/sms/stats', protectAdmin, async (req, res) => {
         uniqueSenders,
         smsToday,
         topSenders
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================
+// Device Status Tracking
+// ============================================
+
+// Get all user devices with status
+router.get('/devices', protectAdmin, async (req, res) => {
+  try {
+    const { userId, status } = req.query;
+    const filter = {};
+    if (userId) filter.user = userId;
+    if (status) filter.status = status;
+
+    // Auto-mark stale devices offline (no heartbeat for 90 seconds)
+    const staleThreshold = new Date(Date.now() - 90 * 1000);
+    await UserDevice.updateMany(
+      { status: 'online', lastActive: { $lt: staleThreshold } },
+      { status: 'offline' }
+    );
+
+    const devices = await UserDevice.find(filter)
+      .populate('user', 'fullName email phone profileImage status')
+      .sort({ lastActive: -1 });
+
+    const onlineCount = await UserDevice.countDocuments({ status: 'online' });
+    const totalCount = await UserDevice.countDocuments();
+
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.json({
+      success: true,
+      data: {
+        devices,
+        onlineCount,
+        totalCount
       }
     });
   } catch (error) {

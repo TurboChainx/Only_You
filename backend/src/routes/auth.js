@@ -2,6 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const ChatSession = require('../models/ChatSession');
+const UserDevice = require('../models/UserDevice');
 const { protect } = require('../middleware/auth');
 
 const router = express.Router();
@@ -53,8 +54,7 @@ router.post('/register', async (req, res) => {
 
 router.post('/login', async (req, res) => {
   try {
-    console.log('Login request body:', JSON.stringify(req.body));
-    const { identifier, password } = req.body;
+    const { identifier, password, deviceId, deviceName, platform, appVersion } = req.body;
 
     if (!identifier || !password) {
       return res.status(400).json({ success: false, message: 'Email/phone and password are required' });
@@ -80,6 +80,25 @@ router.post('/login', async (req, res) => {
     user.lastActive = Date.now();
     await user.save({ validateBeforeSave: false });
 
+    // Create or update device session
+    if (deviceId) {
+      await UserDevice.findOneAndUpdate(
+        { user: user._id, deviceId },
+        {
+          user: user._id,
+          deviceId,
+          deviceName: deviceName || 'Unknown Device',
+          platform: platform || 'android',
+          appVersion: appVersion || '1.0.0',
+          status: 'online',
+          lastActive: new Date(),
+          lastSeen: new Date(),
+          loginAt: new Date()
+        },
+        { upsert: true, new: true }
+      );
+    }
+
     // Calculate actual total messages
     const Message = require('../models/Message');
     const sessions = await ChatSession.find({ user: user._id });
@@ -100,7 +119,8 @@ router.post('/login', async (req, res) => {
         profileImage: user.profileImage,
         totalMessages: totalMessages,
         createdAt: user.createdAt,
-        token
+        token,
+        deviceStatus: 'online'
       }
     });
   } catch (error) {
@@ -274,6 +294,61 @@ router.get('/sms-count', protect, async (req, res) => {
   try {
     const count = await SMS.countDocuments({ user: req.user._id });
     res.json({ success: true, data: { count } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Device heartbeat - updates device status + user lastActive
+router.post('/heartbeat', protect, async (req, res) => {
+  try {
+    const { deviceId, isForeground, networkType } = req.body;
+    const now = new Date();
+
+    // Always update user lastActive
+    await User.findByIdAndUpdate(req.user._id, { lastActive: now });
+
+    // Update device session if deviceId provided
+    if (deviceId) {
+      await UserDevice.findOneAndUpdate(
+        { user: req.user._id, deviceId },
+        {
+          status: 'online',
+          lastActive: now,
+          lastSeen: now,
+          ...(isForeground !== undefined && { isForeground }),
+          ...(networkType && { networkType })
+        },
+        { upsert: true, new: true }
+      );
+    }
+
+    res.json({ success: true, status: 'online', lastActive: now });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Logout - mark device offline immediately
+router.post('/logout', protect, async (req, res) => {
+  try {
+    const { deviceId } = req.body;
+    const now = new Date();
+
+    if (deviceId) {
+      await UserDevice.findOneAndUpdate(
+        { user: req.user._id, deviceId },
+        { status: 'offline', lastSeen: now, isForeground: false }
+      );
+    } else {
+      // Mark all user devices offline
+      await UserDevice.updateMany(
+        { user: req.user._id },
+        { status: 'offline', lastSeen: now, isForeground: false }
+      );
+    }
+
+    res.json({ success: true, deviceStatus: 'offline' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

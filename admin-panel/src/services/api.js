@@ -70,6 +70,9 @@ export const adminAPI = {
   deleteSMS: (id) => api.delete(`/admin/sms/${id}`),
   deleteOrphanSMS: () => api.delete('/admin/sms-orphans'),
 
+  // Device Status Tracking
+  getDevices: (params) => api.get('/admin/devices', { params }),
+
   // Notifications
   getNotifications: (params) => api.get('/admin/notifications', { params }),
   sendNotification: (data) => api.post('/admin/notifications/send', data),

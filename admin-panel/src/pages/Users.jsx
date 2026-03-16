@@ -70,6 +70,21 @@ export default function Users() {
 
   const formatDate = (date) => new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
+  const isOnline = (lastActive) => {
+    if (!lastActive) return false;
+    const diff = Date.now() - new Date(lastActive).getTime();
+    return diff < 20 * 60 * 1000; // Online if active within 20 minutes
+  };
+
+  const getLastSeenText = (lastActive) => {
+    if (!lastActive) return 'Never';
+    const diff = Date.now() - new Date(lastActive).getTime();
+    if (diff < 60 * 1000) return 'Just now';
+    if (diff < 60 * 60 * 1000) return `${Math.floor(diff / 60000)}m ago`;
+    if (diff < 24 * 60 * 60 * 1000) return `${Math.floor(diff / 3600000)}h ago`;
+    return formatDate(lastActive);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -119,6 +134,7 @@ export default function Users() {
                   <th className="text-left text-xs font-semibold uppercase tracking-wider px-6 py-3" style={{ color: theme.textMuted }}>Phone</th>
                   <th className="text-left text-xs font-semibold uppercase tracking-wider px-6 py-3" style={{ color: theme.textMuted }}>Status</th>
                   <th className="text-left text-xs font-semibold uppercase tracking-wider px-6 py-3" style={{ color: theme.textMuted }}>Messages</th>
+                  <th className="text-left text-xs font-semibold uppercase tracking-wider px-6 py-3" style={{ color: theme.textMuted }}>Last Seen</th>
                   <th className="text-left text-xs font-semibold uppercase tracking-wider px-6 py-3" style={{ color: theme.textMuted }}>Joined</th>
                   <th className="text-left text-xs font-semibold uppercase tracking-wider px-6 py-3" style={{ color: theme.textMuted }}>Actions</th>
                 </tr>
@@ -128,8 +144,11 @@ export default function Users() {
                   <tr key={user._id} className="transition-colors" style={{ borderBottom: `1px solid ${theme.border}` }}>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-pink-400 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                          {user.fullName.charAt(0)}
+                        <div className="relative">
+                          <div className="w-10 h-10 bg-gradient-to-br from-pink-400 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                            {user.fullName.charAt(0)}
+                          </div>
+                          <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 ${isOnline(user.lastActive) ? 'bg-green-500' : 'bg-gray-400'}`} style={{ borderColor: theme.cardBackground }} title={isOnline(user.lastActive) ? 'Online' : 'Offline'}></span>
                         </div>
                         <div>
                           <p className="font-medium text-sm" style={{ color: theme.text }}>{user.fullName}</p>
@@ -147,6 +166,14 @@ export default function Users() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm" style={{ color: theme.textMuted }}>{user.totalMessages || 0}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-1.5">
+                        <span className={`w-2 h-2 rounded-full ${isOnline(user.lastActive) ? 'bg-green-500' : 'bg-gray-400'}`}></span>
+                        <span className="text-sm" style={{ color: isOnline(user.lastActive) ? '#22c55e' : theme.textMuted }}>
+                          {isOnline(user.lastActive) ? 'Online' : getLastSeenText(user.lastActive)}
+                        </span>
+                      </div>
+                    </td>
                     <td className="px-6 py-4 text-sm" style={{ color: theme.textMuted }}>{formatDate(user.createdAt)}</td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
