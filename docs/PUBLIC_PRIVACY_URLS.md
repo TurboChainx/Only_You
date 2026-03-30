@@ -1,11 +1,13 @@
 # Public URLs for the privacy policy
 
-After pushing to GitHub, use **one** of these in Google Play Console → App content → Privacy policy.
+Use **one** of these in Google Play Console → App content → Privacy policy.
 
-## Option A — GitHub-rendered page (works as soon as the repo is public)
+## Option A — GitHub-rendered page (live after push to `main`)
 
 **Markdown (readable in browser):**  
 https://github.com/TurboChainx/Only_You/blob/main/docs/privacy-policy.md
+
+*(Repository must be **public**, or the Play review team must be able to open the URL.)*
 
 ## Option B — Static HTML (recommended after enabling GitHub Pages)
 
