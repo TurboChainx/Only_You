@@ -175,13 +175,20 @@ DEPLOY ADMIN PANEL:
 3. Restart Nginx:
    sudo systemctl restart nginx
 
-BUILD & DEPLOY MOBILE APK:
+BUILD & DEPLOY MOBILE APK (local Gradle):
 1. Build APK:
    cd g:\Only_You\mobile\android
    .\gradlew.bat clean assembleRelease
 
 2. Copy APK to root:
    Copy-Item "app\build\outputs\apk\release\app-release.apk" "..\..\OnlyYou-release.apk"
+
+GOOGLE PLAY — ANDROID APP BUNDLE (.aab):
+   Prefer Expo EAS (signing and Play-ready bundle). From repo root:
+   cd g:\Only_You\mobile
+   eas build --platform android --profile production
+   Download the .aab from https://expo.dev — see docs\DELIVERY_PACKAGE.md for full checklist
+   (privacy policy URL, 512x512 icon, 1024x500 feature graphic).
 
 ==============================================================================
                            6. TROUBLESHOOTING

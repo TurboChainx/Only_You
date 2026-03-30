@@ -153,7 +153,9 @@ npx expo start
 
 ---
 
-## Phase 6: Build Production APK
+## Phase 6: Build for Play Store (AAB) or test APK
+
+`mobile/eas.json` is already configured: **production** = Android App Bundle (`.aab`), **preview** = APK.
 
 ### Install EAS CLI
 ```bash
@@ -164,27 +166,10 @@ npm install -g eas-cli
 ```bash
 cd mobile
 eas login  # Use your Expo account
-
-# Create eas.json
-cat > eas.json << 'EOF'
-{
-  "build": {
-    "preview": {
-      "android": {
-        "buildType": "apk"
-      }
-    },
-    "production": {
-      "android": {
-        "buildType": "app-bundle"
-      }
-    }
-  }
-}
-EOF
+# eas.json is committed; only recreate if missing (must match production = app-bundle)
 ```
 
-### Build APK
+### Build
 ```bash
 # Preview build (APK for testing)
 eas build --platform android --profile preview
@@ -195,7 +180,7 @@ eas build --platform android --profile production
 
 **Time:** ~15-20 minutes
 
-Download APK from Expo dashboard and share with client.
+Download **APK** (preview) or **`.aab`** (production) from the Expo dashboard. For Play Store publication steps, see **`docs/DELIVERY_PACKAGE.md`**.
 
 ---
 

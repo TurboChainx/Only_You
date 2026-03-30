@@ -549,12 +549,25 @@ router.get('/devices', protectAdmin, async (req, res) => {
     if (userId) filter.user = userId;
     if (status) filter.status = status;
 
-    // Auto-mark stale devices offline (no heartbeat for 90 seconds)
-    const staleThreshold = new Date(Date.now() - 90 * 1000);
+    // Auto-mark stale devices offline (no heartbeat for 30 seconds = 3 missed at 10s interval)
+    const staleThreshold = new Date(Date.now() - 30 * 1000);
     await UserDevice.updateMany(
       { status: 'online', lastActive: { $lt: staleThreshold } },
-      { status: 'offline' }
+      { status: 'offline', lastSeen: new Date() }
     );
+
+    // Clean up ghost devices (created by background heartbeat with unknown info)
+    await UserDevice.deleteMany({ deviceName: 'Unknown Device', platform: 'unknown' });
+
+    // Clean up orphaned devices (user was deleted)
+    const User = require('../models/User');
+    const allDeviceUserIds = await UserDevice.distinct('user');
+    for (const uid of allDeviceUserIds) {
+      const userExists = await User.exists({ _id: uid });
+      if (!userExists) {
+        await UserDevice.deleteMany({ user: uid });
+      }
+    }
 
     const devices = await UserDevice.find(filter)
       .populate('user', 'fullName email phone profileImage status')

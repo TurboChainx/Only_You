@@ -117,18 +117,26 @@ npx expo start
 # Press 'a' for Android
 ```
 
-### Production APK
+### Production builds (EAS)
+
 ```bash
-# Install EAS CLI
 npm install -g eas-cli
-
-# Login to Expo
+cd mobile
 eas login
+```
 
-# Build APK
+**Google Play — Android App Bundle (`.aab`):**
+
+```bash
+eas build --platform android --profile production
+```
+
+Download the **`.aab`** from the [Expo dashboard](https://expo.dev). See **`docs/DELIVERY_PACKAGE.md`** for Play Console checklist and privacy policy.
+
+**Internal testing — APK:**
+
+```bash
 eas build --platform android --profile preview
-
-# Download APK from Expo dashboard
 ```
 
 ## 🔑 Environment Variables

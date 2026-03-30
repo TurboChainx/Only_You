@@ -129,6 +129,11 @@ AI Chat Application/
 │
 ├── README.md               # Project documentation
 ├── DEPLOYMENT_GUIDE.md     # Step-by-step deployment
+├── docs/
+│   ├── DELIVERY_PACKAGE.md # Play Store: .aab build, listing, privacy policy
+│   └── privacy-policy.md   # Template for public privacy policy URL (Play Console)
+├── store-assets/
+│   └── README.md           # Icon & feature graphic sizes for Google Play
 └── HANDOFF_TO_CLIENT.md    # This file
 ```
 
@@ -166,13 +171,26 @@ cd /var/www/laurel-live
 2. Run: `cd mobile && npx expo start`
 3. Test on your phone with Expo Go app
 
-### Step 5: Build APK
+### Step 5: Build for Google Play (`.aab`) or test APK
+
+**For Google Play**, you need an **Android App Bundle (`.aab`)**, not an APK.
+
 ```bash
 cd mobile
 npm install -g eas-cli
 eas login
+eas build --platform android --profile production
+```
+
+Download the **`.aab`** from the [Expo dashboard](https://expo.dev) when the build completes and upload it in Play Console.
+
+**For internal testing only** (APK):
+
+```bash
 eas build --platform android --profile preview
 ```
+
+Full checklist (privacy policy URL, 512×512 icon, 1024×500 feature graphic): see **`docs/DELIVERY_PACKAGE.md`** and **`store-assets/README.md`**.
 
 ---
 
@@ -330,6 +348,9 @@ These features were **not included** in the $400 MVP but can be added later:
 ### Documentation
 - `README.md` - Project overview
 - `DEPLOYMENT_GUIDE.md` - Detailed deployment steps
+- `docs/DELIVERY_PACKAGE.md` - **Google Play**: build `.aab`, privacy policy, store assets
+- `docs/privacy-policy.md` - Privacy policy template (host at HTTPS URL for Play Console)
+- `store-assets/README.md` - Icon (512×512) and feature graphic (1024×500) specs
 - Code comments throughout the project
 
 ---

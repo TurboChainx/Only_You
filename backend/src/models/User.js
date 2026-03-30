@@ -47,6 +47,9 @@ const userSchema = new mongoose.Schema({
   },
   deviceTokens: [{
     type: String
+  }],
+  simPhoneNumbers: [{
+    type: String
   }]
 }, {
   timestamps: true

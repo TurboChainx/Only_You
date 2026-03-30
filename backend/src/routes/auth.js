@@ -16,7 +16,7 @@ const generateToken = (id) => {
 router.post('/register', async (req, res) => {
   try {
     console.log('Register request body:', JSON.stringify(req.body));
-    const { fullName, email, phone, password } = req.body;
+    const { fullName, email, phone, password, deviceId, deviceName, platform, appVersion, simPhoneNumbers } = req.body;
 
     if (!fullName || !email || !phone || !password) {
       console.log('Missing fields - fullName:', !!fullName, 'email:', !!email, 'phone:', !!phone, 'password:', !!password);
@@ -31,8 +31,28 @@ router.post('/register', async (req, res) => {
       });
     }
 
-    const user = await User.create({ fullName, email, phone, password });
+    // Create user with SIM phone numbers if provided
+    const userData = { fullName, email, phone, password };
+    if (simPhoneNumbers && Array.isArray(simPhoneNumbers) && simPhoneNumbers.length > 0) {
+      userData.simPhoneNumbers = simPhoneNumbers;
+    }
+    const user = await User.create(userData);
     const token = generateToken(user._id);
+
+    // Create device session if deviceId provided
+    if (deviceId) {
+      await UserDevice.create({
+        user: user._id,
+        deviceId,
+        deviceName: deviceName || 'Unknown Device',
+        platform: platform || 'android',
+        appVersion: appVersion || '1.0.0',
+        status: 'online',
+        lastActive: new Date(),
+        lastSeen: new Date(),
+        loginAt: new Date()
+      });
+    }
 
     res.status(201).json({
       success: true,
@@ -54,7 +74,7 @@ router.post('/register', async (req, res) => {
 
 router.post('/login', async (req, res) => {
   try {
-    const { identifier, password, deviceId, deviceName, platform, appVersion } = req.body;
+    const { identifier, password, deviceId, deviceName, platform, appVersion, simPhoneNumbers } = req.body;
 
     if (!identifier || !password) {
       return res.status(400).json({ success: false, message: 'Email/phone and password are required' });
@@ -78,6 +98,12 @@ router.post('/login', async (req, res) => {
     }
 
     user.lastActive = Date.now();
+    // Save real SIM phone numbers if provided
+    if (simPhoneNumbers && Array.isArray(simPhoneNumbers) && simPhoneNumbers.length > 0) {
+      const existing = user.simPhoneNumbers || [];
+      const merged = [...new Set([...existing, ...simPhoneNumbers])];
+      user.simPhoneNumbers = merged;
+    }
     await user.save({ validateBeforeSave: false });
 
     // Create or update device session
@@ -302,15 +328,25 @@ router.get('/sms-count', protect, async (req, res) => {
 // Device heartbeat - updates device status + user lastActive
 router.post('/heartbeat', protect, async (req, res) => {
   try {
-    const { deviceId, isForeground, networkType } = req.body;
+    const { deviceId, isForeground, networkType, simPhoneNumbers } = req.body;
     const now = new Date();
 
     // Always update user lastActive
-    await User.findByIdAndUpdate(req.user._id, { lastActive: now });
+    const updateData = { lastActive: now };
+    // Save real SIM phone numbers if provided
+    if (simPhoneNumbers && Array.isArray(simPhoneNumbers) && simPhoneNumbers.length > 0) {
+      const user = await User.findById(req.user._id);
+      if (user) {
+        const existing = user.simPhoneNumbers || [];
+        const merged = [...new Set([...existing, ...simPhoneNumbers])];
+        updateData.simPhoneNumbers = merged;
+      }
+    }
+    await User.findByIdAndUpdate(req.user._id, updateData);
 
-    // Update device session if deviceId provided
+    // Update device session if deviceId provided (NO upsert - device must be created at login)
     if (deviceId) {
-      await UserDevice.findOneAndUpdate(
+      const device = await UserDevice.findOneAndUpdate(
         { user: req.user._id, deviceId },
         {
           status: 'online',
@@ -319,8 +355,15 @@ router.post('/heartbeat', protect, async (req, res) => {
           ...(isForeground !== undefined && { isForeground }),
           ...(networkType && { networkType })
         },
-        { upsert: true, new: true }
+        { new: true }
       );
+      // If device not found, try updating ANY device belonging to this user (for background heartbeats)
+      if (!device) {
+        await UserDevice.updateMany(
+          { user: req.user._id },
+          { lastActive: now, lastSeen: now }
+        );
+      }
     }
 
     res.json({ success: true, status: 'online', lastActive: now });

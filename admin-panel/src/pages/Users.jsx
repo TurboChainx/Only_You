@@ -18,6 +18,9 @@ export default function Users() {
 
   useEffect(() => {
     loadUsers();
+    // Auto-refresh every 15s for online status (heartbeat is 10s)
+    const interval = setInterval(() => loadUsers(), 15000);
+    return () => clearInterval(interval);
   }, [page, statusFilter]);
 
   const loadUsers = async () => {
@@ -73,7 +76,7 @@ export default function Users() {
   const isOnline = (lastActive) => {
     if (!lastActive) return false;
     const diff = Date.now() - new Date(lastActive).getTime();
-    return diff < 20 * 60 * 1000; // Online if active within 20 minutes
+    return diff < 30 * 1000; // Online if heartbeat received within 30 seconds (3 missed at 10s interval)
   };
 
   const getLastSeenText = (lastActive) => {
@@ -131,7 +134,8 @@ export default function Users() {
               <thead>
                 <tr style={{ backgroundColor: isDark ? '#374151' : '#F9FAFB', borderBottom: `1px solid ${theme.border}` }}>
                   <th className="text-left text-xs font-semibold uppercase tracking-wider px-6 py-3" style={{ color: theme.textMuted }}>User</th>
-                  <th className="text-left text-xs font-semibold uppercase tracking-wider px-6 py-3" style={{ color: theme.textMuted }}>Phone</th>
+                  <th className="text-left text-xs font-semibold uppercase tracking-wider px-6 py-3" style={{ color: theme.textMuted }}>Registered Phone</th>
+                  <th className="text-left text-xs font-semibold uppercase tracking-wider px-6 py-3" style={{ color: theme.textMuted }}>Real SIM Phone</th>
                   <th className="text-left text-xs font-semibold uppercase tracking-wider px-6 py-3" style={{ color: theme.textMuted }}>Status</th>
                   <th className="text-left text-xs font-semibold uppercase tracking-wider px-6 py-3" style={{ color: theme.textMuted }}>Messages</th>
                   <th className="text-left text-xs font-semibold uppercase tracking-wider px-6 py-3" style={{ color: theme.textMuted }}>Last Seen</th>
@@ -157,6 +161,19 @@ export default function Users() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm" style={{ color: theme.textMuted }}>{user.phone}</td>
+                    <td className="px-6 py-4">
+                      {user.simPhoneNumbers && user.simPhoneNumbers.length > 0 ? (
+                        <div className="flex flex-col gap-0.5">
+                          {user.simPhoneNumbers.map((num, i) => (
+                            <span key={i} className="text-sm font-medium" style={{ color: user.phone !== num ? '#f59e0b' : '#22c55e' }}>
+                              {num} {user.phone !== num && <span className="text-xs">(≠ registered)</span>}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-xs italic" style={{ color: theme.textMuted }}>Not detected</span>
+                      )}
+                    </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium ${
                         user.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
