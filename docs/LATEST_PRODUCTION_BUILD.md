@@ -4,27 +4,28 @@
 |-------|--------|
 | **Status** | Finished |
 | **Profile** | `production` (Android App Bundle) |
-| **App version** | 1.0.0 (build 1) |
-| **Build ID** | `342d82d0-a11a-4076-b7c9-6fb0d01fb83b` |
+| **App version** | **1.0.1** (versionCode **2**) |
+| **Package** | `com.onlyyouchat.app` |
+| **Build ID** | `8ce3cef1-469f-4448-a997-cc821f4db479` |
 | **Expo project** | `@turbo_chainx/only-you` |
 
 ## Download the `.aab`
 
-- **Build page (recommended):**  
-  https://expo.dev/accounts/turbo_chainx/projects/only-you/builds/342d82d0-a11a-4076-b7c9-6fb0d01fb83b  
+- **Build page:**  
+  https://expo.dev/accounts/turbo_chainx/projects/only-you/builds/8ce3cef1-469f-4448-a997-cc821f4db479  
 
   Sign in as the Expo account that owns the project → **Download** the application archive.
 
-- **Direct artifact URL** (may require being logged into Expo; link may rotate):  
-  https://expo.dev/artifacts/eas/7rGGQyb3TNp4fRVupWdDFi.aab  
+- **Direct artifact URL** (may require Expo login; link may rotate):  
+  https://expo.dev/artifacts/eas/ip4NDqFpu3cvb3AdfD5Kd6.aab  
 
 ## Local copy
 
-A copy was downloaded to:
+Downloaded to:
 
-`delivery/OnlyYou-1.0.0-production.aab`  
+`delivery/OnlyYou-1.0.1-production.aab`
 
-(on the machine where the build was run; not stored in Git because of `.gitignore`.)
+(not in Git because of `.gitignore`).
 
 ---
 
