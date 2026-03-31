@@ -40,7 +40,10 @@ setTimeout(async () => {
     
     // First login
     const loginRes = await new Promise((resolve, reject) => {
-      const data = JSON.stringify({ email: 'admin@onlyyou.com', password: 'REDACTED_LOCAL_ADMIN_PASSWORD' });
+      const data = JSON.stringify({
+        email: process.env.ADMIN_EMAIL || 'admin@onlyyou.com',
+        password: process.env.ADMIN_PASSWORD || '',
+      });
       const req = http.request({ hostname: 'localhost', port: 5000, path: '/api/admin/login', method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': data.length } }, res => {
         let body = '';
         res.on('data', chunk => body += chunk);

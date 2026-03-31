@@ -33,3 +33,7 @@ If secrets were ever pushed to a public or forked repository, **assume they are 
 ## 6. Git history
 
 Secrets were removed from the latest commits and rewritten out of history where possible. Anyone who forked or cloned the old repo may still have old data—rotation above still applies.
+
+## 7. Local backup for Google Drive
+
+A copy of removed keys was placed under `secrets-backup-to-drive/` (gitignored). **Upload that folder to Google Drive** (private), then **rotate** all credentials above even if you keep the files. Do not re-commit those files to Git.
