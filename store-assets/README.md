@@ -1,6 +1,6 @@
 # Google Play store listing assets
 
-Use this checklist when preparing graphics for **Only You** (package `com.onlyyou.app`). Export from your design files or from `mobile/assets/` (see below).
+Use this checklist when preparing graphics for **Only You** (package `com.onlyyouchat.app`). Export from your design files or from `mobile/assets/` (see below).
 
 ## Required artwork (typical Play Console setup)
 
@@ -32,3 +32,7 @@ Place exported files here for handoff (optional):
 - `store-assets/screenshots/` (numbered PNGs)
 
 Binary assets are often gitignored or large; you may deliver them via cloud drive instead of committing them.
+
+## Firebase / FCM after a package name change
+
+In [Firebase Console](https://console.firebase.google.com/) → your project → **Project settings** → **Your apps** → **Add app** → Android with package **`com.onlyyouchat.app`**. Download the new `google-services.json` and replace `mobile/android/app/google-services.json`. Re-register SHA-256 for Play App Signing if Google Play signs your builds.

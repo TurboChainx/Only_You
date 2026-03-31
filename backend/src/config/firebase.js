@@ -83,7 +83,7 @@ const sendPushNotification = async (tokens, title, body, data = {}) => {
       notification: {
         sound: 'default',
         priority: 'high',
-        channelId: 'onlyyou_notifications',
+        channelId: 'onlyyouchat_notifications',
       },
     },
   };
@@ -153,7 +153,7 @@ const sendToTopic = async (topic, title, body, data = {}) => {
       notification: {
         sound: 'default',
         priority: 'high',
-        channelId: 'onlyyou_notifications',
+        channelId: 'onlyyouchat_notifications',
       },
     },
   };

@@ -2,7 +2,7 @@
 
 **Last updated:** March 31, 2026
 
-This Privacy Policy describes how the **Only You** mobile application (the “App,” package name `com.onlyyou.app`) collects, uses, and shares information when you use the App.
+This Privacy Policy describes how the **Only You** mobile application (the “App,” package name `com.onlyyouchat.app`) collects, uses, and shares information when you use the App.
 
 The App is operated by the developer identified on the **Google Play** store listing for Only You (“we,” “us,” or “our”). By using the App, you agree to this policy. If you do not agree, please do not use the App.
 
