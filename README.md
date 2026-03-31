@@ -29,9 +29,7 @@ npm run seed    # Seeds database with characters and admin
 npm start       # Starts on port 5000
 ```
 
-**Default Admin Credentials:**
-- Email: `admin@laurellive.com`
-- Password: `REDACTED_ADMIN_PASSWORD`
+**Default admin** is created by the seed script using `ADMIN_EMAIL` / `ADMIN_PASSWORD` from `backend/.env` (see `.env.example`).
 
 ### Admin Panel Setup
 
@@ -86,8 +84,7 @@ const API_BASE = 'http://YOUR_VPS_IP:5000/api';
 
 ### 1. Connect to VPS
 ```bash
-ssh ubuntu@43.164.192.125
-# Password: REDACTED_SSH_PASSWORD
+ssh ubuntu@YOUR_VPS_IP
 ```
 
 ### 2. Run Setup Script
@@ -105,8 +102,8 @@ chmod +x deploy/deploy.sh
 ```
 
 ### 4. Access Application
-- **Admin Panel:** http://43.164.192.125/
-- **API Health:** http://43.164.192.125/api/health
+- **Admin Panel:** `http://YOUR_VPS_IP/`
+- **API Health:** `http://YOUR_VPS_IP/api/health`
 
 ## 📱 Building Mobile APK
 
@@ -142,21 +139,27 @@ eas build --platform android --profile preview
 ## 🔑 Environment Variables
 
 ### Backend (.env)
+
+Copy `backend/.env.example` to `backend/.env` and fill with **your** values (never commit `.env`).
+
 ```env
 PORT=5000
-MONGODB_URI=mongodb://localhost:27017/laurel_live
-JWT_SECRET=laurel_live_jwt_secret_key_2024_secure
+MONGODB_URI=mongodb+srv://...
+JWT_SECRET=<generate-a-long-random-secret>
 JWT_EXPIRES_IN=30d
 OPENAI_API_KEY=sk-proj-...
 OPENAI_MODEL=gpt-4.1-mini
-ADMIN_EMAIL=admin@laurellive.com
-ADMIN_PASSWORD=REDACTED_ADMIN_PASSWORD
+ADMIN_EMAIL=your-admin@example.com
+ADMIN_PASSWORD=<set-a-strong-password>
 ```
 
 ### Mobile (update in code)
+
+Point the app at your public API URL (HTTPS recommended):
+
 ```javascript
 // mobile/src/services/api.js
-const API_BASE = 'http://43.164.192.125/api';
+const API_BASE = 'https://your-api-domain.com/api';
 ```
 
 ## 👥 AI Characters

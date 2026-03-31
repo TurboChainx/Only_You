@@ -16,6 +16,16 @@ lerna-debug.log*
 .env.*
 !.env.example
 *.env
+# Never commit Firebase Admin or client resource secrets
+backend/src/config/firebase-admin-key.json
+Fayaz Shaikh_Resource/OpenAI_apikey.txt
+Fayaz Shaikh_Resource/VPS.txt
+Fayaz Shaikh_Resource/google-services.json
+Fayaz Shaikh_Resource/*firebase-adminsdk*.json
+# Local-only copies for Drive upload (never push)
+secrets-backup-to-drive/*
+!secrets-backup-to-drive/.gitignore
+!secrets-backup-to-drive/README.txt
 .env.local
 .env.development.local
 .env.test.local

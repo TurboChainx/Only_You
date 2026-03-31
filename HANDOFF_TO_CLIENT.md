@@ -124,7 +124,7 @@ AI Chat Application/
 │
 ├── Fayaz Shaikh_Resource/ # Your provided resources
 │   ├── Character info.txt  # Character data (used)
-│   ├── apikey.txt          # OpenAI key (configured)
+│   ├── (secrets not in Git — use backend/.env on server only)
 │   └── VPS.txt             # VPS credentials
 │
 ├── README.md               # Project documentation

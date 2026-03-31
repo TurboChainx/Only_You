@@ -1,18 +1,46 @@
 const admin = require('firebase-admin');
 const path = require('path');
+const fs = require('fs');
 
 let firebaseApp = null;
 
+const loadServiceAccount = () => {
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+    try {
+      return JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+    } catch (e) {
+      console.error('Firebase: invalid FIREBASE_SERVICE_ACCOUNT_JSON');
+      return null;
+    }
+  }
+  const keyPath = path.join(__dirname, 'firebase-admin-key.json');
+  if (fs.existsSync(keyPath)) {
+    try {
+      return JSON.parse(fs.readFileSync(keyPath, 'utf8'));
+    } catch (e) {
+      console.error('Firebase: could not read firebase-admin-key.json');
+      return null;
+    }
+  }
+  return null;
+};
+
 const initializeFirebase = () => {
   if (firebaseApp) return firebaseApp;
-  
+
   try {
-    const serviceAccount = require('./firebase-admin-key.json');
-    
+    const serviceAccount = loadServiceAccount();
+    if (!serviceAccount) {
+      console.warn(
+        'Firebase Admin: no credentials (set FIREBASE_SERVICE_ACCOUNT_JSON or add backend/src/config/firebase-admin-key.json locally). Push notifications disabled.'
+      );
+      return null;
+    }
+
     firebaseApp = admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount)
+      credential: admin.credential.cert(serviceAccount),
     });
-    
+
     console.log('Firebase Admin SDK initialized successfully');
     return firebaseApp;
   } catch (error) {
@@ -25,15 +53,18 @@ const sendPushNotification = async (tokens, title, body, data = {}) => {
   if (!firebaseApp) {
     initializeFirebase();
   }
-  
+
+  if (!firebaseApp) {
+    return { success: 0, failure: 0, skipped: true };
+  }
+
   if (!tokens || tokens.length === 0) {
     console.log('No device tokens provided');
     return { success: 0, failure: 0 };
   }
 
   const tokensArray = Array.isArray(tokens) ? tokens : [tokens];
-  
-  // Filter out undefined/null/non-string data values (FCM requires all string values)
+
   const cleanData = { title, body };
   if (data) {
     Object.entries(data).forEach(([k, v]) => {
@@ -44,7 +75,7 @@ const sendPushNotification = async (tokens, title, body, data = {}) => {
   const message = {
     notification: {
       title,
-      body
+      body,
     },
     data: cleanData,
     android: {
@@ -52,23 +83,30 @@ const sendPushNotification = async (tokens, title, body, data = {}) => {
       notification: {
         sound: 'default',
         priority: 'high',
-        channelId: 'onlyyou_notifications'
-      }
-    }
+        channelId: 'onlyyou_notifications',
+      },
+    },
   };
 
   try {
-    console.log('[FCM] Sending to tokens:', tokensArray.map(t => t.substring(0, 20) + '...'));
-    console.log('[FCM] Message:', JSON.stringify({ notification: message.notification, dataKeys: Object.keys(cleanData) }));
-    
+    console.log(
+      '[FCM] Sending to tokens:',
+      tokensArray.map((t) => t.substring(0, 20) + '...')
+    );
+    console.log(
+      '[FCM] Message:',
+      JSON.stringify({ notification: message.notification, dataKeys: Object.keys(cleanData) })
+    );
+
     const response = await admin.messaging().sendEachForMulticast({
       tokens: tokensArray,
-      ...message
+      ...message,
     });
-    
-    console.log(`Push notifications sent: ${response.successCount} success, ${response.failureCount} failure`);
-    
-    // Log individual response details
+
+    console.log(
+      `Push notifications sent: ${response.successCount} success, ${response.failureCount} failure`
+    );
+
     if (response.responses) {
       response.responses.forEach((r, i) => {
         if (r.error) {
@@ -78,11 +116,11 @@ const sendPushNotification = async (tokens, title, body, data = {}) => {
         }
       });
     }
-    
+
     return {
       success: response.successCount,
       failure: response.failureCount,
-      responses: response.responses
+      responses: response.responses,
     };
   } catch (error) {
     console.error('[FCM] Error sending push notification:', error.code, error.message);
@@ -95,25 +133,29 @@ const sendToTopic = async (topic, title, body, data = {}) => {
     initializeFirebase();
   }
 
+  if (!firebaseApp) {
+    return { success: false, skipped: true };
+  }
+
   const message = {
     topic,
     notification: {
       title,
-      body
+      body,
     },
     data: {
       ...data,
       title,
-      body
+      body,
     },
     android: {
       priority: 'high',
       notification: {
         sound: 'default',
         priority: 'high',
-        channelId: 'onlyyou_notifications'
-      }
-    }
+        channelId: 'onlyyou_notifications',
+      },
+    },
   };
 
   try {
@@ -129,5 +171,5 @@ const sendToTopic = async (topic, title, body, data = {}) => {
 module.exports = {
   initializeFirebase,
   sendPushNotification,
-  sendToTopic
+  sendToTopic,
 };
